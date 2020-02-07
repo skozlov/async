@@ -1,18 +1,20 @@
 package com.github.skozlov
 
-import java.lang.Thread.interrupted
+import java.lang.Thread.{currentThread, interrupted}
 
 package object async {
 	def workerThread(getNextTask: () => () => Any): Thread = new Thread(() =>
-		try {
-			while (!interrupted()) {
-				val task = getNextTask()
-				if (!Thread.currentThread().isInterrupted) {
-					task()
+		while (!interrupted()) {
+			val task: Option[() => Any] = {
+				try {
+					Some(getNextTask())
+				} catch {
+					case _: InterruptedException =>
+						currentThread().interrupt()
+						None
 				}
 			}
-		} catch {
-			case _: InterruptedException =>
+			task foreach {_.apply()}
 		}
 	)
 }
