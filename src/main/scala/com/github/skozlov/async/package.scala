@@ -7,7 +7,12 @@ package object async {
 		while (!interrupted()) {
 			val task: Option[() => Any] = {
 				try {
-					Some(getNextTask())
+					val nextTask = getNextTask()
+					if (currentThread().isInterrupted) {
+						None
+					} else {
+						Some(nextTask)
+					}
 				} catch {
 					case _: InterruptedException =>
 						currentThread().interrupt()
