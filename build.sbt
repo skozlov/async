@@ -1,7 +1,12 @@
+organization := "com.github.skozlov"
 name := "async"
-
-version := "0.1"
-
+version := "0.1.0"
 isSnapshot := true
+scalaVersion := "2.13.8"
 
-scalaVersion := "2.13.1"
+scalacOptions ++= Seq(
+    "-encoding", "utf8",
+    "-Xfatal-warnings",
+    "-Xlint",
+    "-target:jvm-17",
+)
