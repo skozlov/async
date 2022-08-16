@@ -6,7 +6,7 @@ scalaVersion := "2.13.8"
 
 scalacOptions ++= Seq(
     "-encoding", "utf8",
-    "-Xfatal-warnings",
+//    "-Xfatal-warnings", todo uncomment
     "-Xlint",
     "-target:jvm-17",
 )
