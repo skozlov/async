@@ -4,8 +4,13 @@ import java.lang.Thread.{currentThread, interrupted}
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
+import scala.util.Try
 
 package object async {
+	val CurrentThreadExecutor: Executor = new Executor {
+		override def execute[R](r: => R)(implicit deadline: Deadline): Try[R] = Try {r}
+	}
+
 	def workerThread(getNextTask: () => () => Any): Thread = new Thread(() =>
 		while (!interrupted()) {
 			val task: Option[() => Any] = {
