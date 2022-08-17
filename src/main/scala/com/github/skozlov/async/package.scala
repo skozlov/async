@@ -65,15 +65,23 @@ package object async {
 		}
 	}
 
-	implicit class RichCondition(wrapped: Condition) {
-		def await(timeout: Duration): Boolean = {
-			require(timeout >= Duration.Zero, s"Negative timeout: $timeout")
-			if (timeout.isFinite) {
-				wrapped.await(timeout.length, timeout.unit)
+	implicit class RichCondition(condition: Condition) {
+		@throws[TimeoutException]
+		def await(timeout: Duration): Unit = {
+			if (timeout <= Duration.Zero) {
+				throw new TimeoutException(s"Will not await with non-positive timeout $timeout")
+			} else if (timeout == Duration.Inf) {
+				condition.await()
 			} else {
-				wrapped.await()
-				true
+				if (!condition.await(timeout.length, timeout.unit)) {
+					throw new TimeoutException(s"Waited on condition for $timeout")
+				}
 			}
+		}
+
+		@throws[TimeoutException]
+		def awaitWithDeadline(implicit deadline: Deadline, clock: Clock): Unit ={
+			await(deadline.toTimeout)
 		}
 	}
 }
