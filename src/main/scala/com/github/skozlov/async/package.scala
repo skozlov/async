@@ -1,7 +1,6 @@
 package com.github.skozlov
 
 import java.lang.Thread.{currentThread, interrupted}
-import java.time.Clock
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
@@ -44,7 +43,7 @@ package object async {
 		}
 
 		@throws[TimeoutException]
-		def locking[R](r: => R)(implicit deadline: Deadline, clock: Clock): Unit ={
+		def locking[R](r: => R)(implicit deadline: Deadline): Unit ={
 			lockIn(deadline.toTimeout)
 			try {
 				r
@@ -80,7 +79,7 @@ package object async {
 		}
 
 		@throws[TimeoutException]
-		def awaitWithDeadline(implicit deadline: Deadline, clock: Clock): Unit ={
+		def awaitWithDeadline(implicit deadline: Deadline): Unit ={
 			await(deadline.toTimeout)
 		}
 	}
