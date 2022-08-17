@@ -14,7 +14,7 @@ class ProducerConsumerQueue[A] {
 
     @throws[TimeoutException]
     def enqueue(a: A)(implicit blockingTimeout: Duration): Unit ={
-        inLock.locking {
+        inLock.lockingOld {
             in append a
             condition.signalAll()
         }
@@ -22,9 +22,9 @@ class ProducerConsumerQueue[A] {
 
     @throws[TimeoutException]
     def dequeue()(implicit blockingTimeout: Duration): A = {
-        outLock.locking {
+        outLock.lockingOld {
             while (out.isEmpty) {
-                inLock.locking {
+                inLock.lockingOld {
                     while (in.isEmpty) {
                         condition.await(blockingTimeout)
                     }

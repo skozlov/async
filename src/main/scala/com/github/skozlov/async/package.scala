@@ -1,6 +1,7 @@
 package com.github.skozlov
 
 import java.lang.Thread.{currentThread, interrupted}
+import java.time.Clock
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
@@ -26,26 +27,40 @@ package object async {
 		}
 	)
 
-	implicit class RichLock(wrapped: Lock) {
-		def tryLock(timeout: Duration): Boolean ={
-			require(timeout >= Duration.Zero, s"Negative timeout: $timeout")
-			if (timeout.isFinite) {
-				wrapped.tryLock(timeout.length, timeout.unit)
-			} else {
-				wrapped.lock()
-				true
+	implicit class RichLock(lock: Lock) {
+		@throws[TimeoutException]
+		def lockIn(timeout: Duration): Unit ={
+			if (!lock.tryLock()) {
+				if (timeout <= Duration.Zero) {
+					throw new TimeoutException(s"Will not lock with negative timeout $timeout")
+				} else if (timeout == Duration.Inf) {
+					lock.lock()
+				} else {
+					if (!lock.tryLock(timeout.length, timeout.unit)) {
+						throw new TimeoutException(s"Could not acquire the lock in $timeout")
+					}
+				}
 			}
 		}
 
 		@throws[TimeoutException]
-		def locking[R](r: => R)(implicit lockTimeout: Duration): R = {
-			if (!tryLock(lockTimeout)) {
-				throw new TimeoutException(s"Could not acquire the lock for $lockTimeout")
-			}
+		def locking[R](r: => R)(implicit deadline: Deadline, clock: Clock): Unit ={
+			lockIn(deadline.toTimeout)
 			try {
 				r
 			} finally {
-				wrapped.unlock()
+				lock.unlock()
+			}
+		}
+
+		@throws[TimeoutException]
+		@deprecated("", "")
+		def lockingOld[R](r: => R)(implicit lockTimeout: Duration): R = { // todo delete
+			lockIn(lockTimeout)
+			try {
+				r
+			} finally {
+				lock.unlock()
 			}
 		}
 	}
