@@ -48,19 +48,8 @@ package object async {
 		}
 
 		@throws[TimeoutException]
-		def locking[R](r: => R)(implicit deadline: Deadline): Unit ={
+		def locking[R](r: => R)(implicit deadline: Deadline): R ={
 			lockIn(deadline.toTimeout)
-			try {
-				r
-			} finally {
-				lock.unlock()
-			}
-		}
-
-		@throws[TimeoutException]
-		@deprecated("", "")
-		def lockingOld[R](r: => R)(implicit lockTimeout: Duration): R = { // todo delete
-			lockIn(lockTimeout)
 			try {
 				r
 			} finally {
@@ -84,7 +73,7 @@ package object async {
 		}
 
 		@throws[TimeoutException]
-		def awaitWithDeadline(implicit deadline: Deadline): Unit ={
+		def awaitWithDeadline()(implicit deadline: Deadline): Unit ={
 			await(deadline.toTimeout)
 		}
 	}
