@@ -6,7 +6,7 @@ import Future._
 sealed trait Future[+A]{
     def flatMap[B](f: A => Future[B]): Future[B] = {
         def afterThis(a: A): Future[B] = {
-            MultiStep(ForkJoin(SingleStep(() => f(a)), (x: Future[B]) => x))
+            MultiStep(ForkJoin(f(a)))
         }
 
         this match {
