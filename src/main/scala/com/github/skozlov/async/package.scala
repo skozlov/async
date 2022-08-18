@@ -1,16 +1,32 @@
 package com.github.skozlov
 
+import java.lang.Math.max
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
 
 package object async {
+	implicit class RichThread(thread: Thread){
+		@throws[TimeoutException]
+		def join(timeout: Duration): Unit = {
+			if (thread.isAlive) {
+				if (timeout <= Duration.Zero) {
+					throw new TimeoutException(s"Will not join with non-positive timeout $timeout")
+				} else if (timeout == Duration.Inf) {
+					thread.join()
+				} else {
+					thread.join(max(1, timeout.toMillis)) // can't pass 0 millis here as it means forever
+				}
+			}
+		}
+	}
+
 	implicit class RichLock(lock: Lock) {
 		@throws[TimeoutException]
 		def lockIn(timeout: Duration): Unit ={
 			if (!lock.tryLock()) {
 				if (timeout <= Duration.Zero) {
-					throw new TimeoutException(s"Will not lock with negative timeout $timeout")
+					throw new TimeoutException(s"Will not lock with non-positive timeout $timeout")
 				} else if (timeout == Duration.Inf) {
 					lock.lock()
 				} else {

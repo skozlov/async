@@ -7,6 +7,9 @@ import scala.concurrent.duration.Duration
 trait ThreadPool extends AsyncTaskExecutor {
     protected val tasks = new ProducerConsumerQueue[AsyncTask]
 
+    @volatile
+    private var finishDeadline: Option[Deadline] = None
+
     override def submit(task: AsyncTask): Unit = {
         if (task.checkStillNeeded()) {
             try {
@@ -17,7 +20,20 @@ trait ThreadPool extends AsyncTaskExecutor {
         }
     }
 
-    protected def newThread()(implicit taskWaitTimeout: Duration, clock: Clock): Thread = {
+    def start(): Unit
+
+    @throws[TimeoutException]
+    def finish(deadline: Deadline): Unit = {
+        finishDeadline = Some(deadline)
+        finishThreads(deadline)
+    }
+
+    @throws[TimeoutException]
+    protected def finishThreads(deadline: Deadline): Unit
+
+    def finishingWithDeadline(): Option[Deadline] = finishDeadline
+
+    protected def newThread()(implicit taskWaitTimeout: Duration, clock: Clock): WorkerThread = {
         new WorkerThread(() => {
             val task = tasks.dequeue()(Deadline.fromTimeout(taskWaitTimeout))
             if (task.checkStillNeeded()) {
@@ -31,8 +47,14 @@ object ThreadPool {
     def fixed(numberOfThreads: Int)(implicit taskWaitTimeout: Duration, clock: Clock): ThreadPool = {
         require(numberOfThreads > 0, s"Required at least 1 thread but found $numberOfThreads")
         new ThreadPool {
-            for (_ <- 1 to numberOfThreads) {
-                newThread().start()
+            private val threads = Array.tabulate(numberOfThreads){_ => newThread()}
+
+            override def start(): Unit = threads foreach {_.start()}
+
+            @throws[TimeoutException]
+            override protected def finishThreads(deadline: Deadline): Unit = {
+                threads foreach {_.finish()}
+                threads foreach {_.join(deadline.toTimeout)}
             }
         }
     }
