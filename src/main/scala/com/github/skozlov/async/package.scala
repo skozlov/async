@@ -4,13 +4,8 @@ import java.lang.Thread.currentThread
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
-import scala.util.Try
 
 package object async {
-	val CurrentThreadExecutor: Executor = new Executor {
-		override def execute[R](r: => R)(implicit deadline: Deadline): Try[R] = Try {r}
-	}
-
 	implicit class RichLock(lock: Lock) {
 		@throws[TimeoutException]
 		def lockIn(timeout: Duration): Unit ={
