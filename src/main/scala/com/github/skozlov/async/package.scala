@@ -1,6 +1,6 @@
 package com.github.skozlov
 
-import java.lang.Thread.{currentThread, interrupted}
+import java.lang.Thread.currentThread
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
@@ -10,26 +10,6 @@ package object async {
 	val CurrentThreadExecutor: Executor = new Executor {
 		override def execute[R](r: => R)(implicit deadline: Deadline): Try[R] = Try {r}
 	}
-
-	def workerThread(getNextTask: () => () => Any): Thread = new Thread(() =>
-		while (!interrupted()) {
-			val task: Option[() => Any] = {
-				try {
-					val nextTask = getNextTask()
-					if (currentThread().isInterrupted) {
-						None
-					} else {
-						Some(nextTask)
-					}
-				} catch {
-					case _: InterruptedException =>
-						currentThread().interrupt()
-						None
-				}
-			}
-			task foreach {_.apply()}
-		}
-	)
 
 	implicit class RichLock(lock: Lock) {
 		@throws[TimeoutException]
@@ -77,4 +57,13 @@ package object async {
 			await(deadline.toTimeout)
 		}
 	}
+
+	def workerThread(getNextTask: () => () => Any): Thread = new Thread(() => {
+		while (!currentThread().isInterrupted) {
+			val task = getNextTask()
+			if (!currentThread().isInterrupted) {
+				task()
+			}
+		}
+	})
 }

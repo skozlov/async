@@ -12,6 +12,6 @@ object Main extends App {
 		}
 	})
 	thread.start()
-	sleep(3000)
+	sleep(3500)
 	thread.interrupt()
 }

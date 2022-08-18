@@ -6,6 +6,8 @@ import scala.concurrent.duration.Duration
 
 sealed trait Deadline extends Ordered[Deadline] {
     def toTimeout: Duration
+
+    def isOver: Boolean = toTimeout <= Duration.Zero
 }
 
 object Deadline {
@@ -14,7 +16,7 @@ object Deadline {
             if (this == that) 0 else 1
         }
 
-        override def toTimeout: Duration = Duration.Inf
+        override val toTimeout: Duration = Duration.Inf
     }
 
     case object MinusInf extends Deadline {
@@ -22,7 +24,7 @@ object Deadline {
             if (this == that) 0 else -1
         }
 
-        override def toTimeout: Duration = Duration.MinusInf
+        override val toTimeout: Duration = Duration.MinusInf
     }
 
     case class At(instant: Instant, clock: Clock) extends Deadline {
