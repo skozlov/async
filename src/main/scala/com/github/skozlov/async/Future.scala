@@ -18,6 +18,8 @@ sealed trait Future[+A]{
             )
         }
     }
+
+    def map[B](f: A => B): Future[B] = flatMap {a => Future{f(a)}}
 }
 
 object Future {
