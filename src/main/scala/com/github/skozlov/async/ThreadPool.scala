@@ -18,7 +18,7 @@ trait ThreadPool extends AsyncTaskExecutor {
     }
 
     protected def newThread()(implicit taskWaitTimeout: Duration, clock: Clock): Thread = {
-        workerThread(() => {
+        new WorkerThread(() => {
             val task = tasks.dequeue()(Deadline.fromTimeout(taskWaitTimeout))
             if (task.checkStillNeeded()) {
                 task.perform()

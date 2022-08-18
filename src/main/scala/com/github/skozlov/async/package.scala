@@ -1,6 +1,5 @@
 package com.github.skozlov
 
-import java.lang.Thread.currentThread
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
@@ -52,10 +51,4 @@ package object async {
 			await(deadline.toTimeout)
 		}
 	}
-
-	def workerThread(performNextTask: () => Any): Thread = new Thread(() => {
-		while (!currentThread().isInterrupted) {
-			performNextTask()
-		}
-	})
 }
