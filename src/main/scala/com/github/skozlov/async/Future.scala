@@ -24,4 +24,6 @@ object Future {
     case class SingleStep[+A](f: () => A) extends Future[A]
 
     case class MultiStep[+A, F](start: ForkJoin[F, A]) extends Future[A]
+
+    def apply[A](a: => A): Future[A] = SingleStep(() => a)
 }
