@@ -53,12 +53,9 @@ package object async {
 		}
 	}
 
-	def workerThread(getNextTask: () => () => Any): Thread = new Thread(() => {
+	def workerThread(performNextTask: () => Any): Thread = new Thread(() => {
 		while (!currentThread().isInterrupted) {
-			val task = getNextTask()
-			if (!currentThread().isInterrupted) {
-				task()
-			}
+			performNextTask()
 		}
 	})
 }
