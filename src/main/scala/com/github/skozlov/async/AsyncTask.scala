@@ -1,13 +1,18 @@
 package com.github.skozlov.async
 
 trait AsyncTask{
-    def checkStillNeeded(): Boolean = !checkDeadlineOver()
+    @volatile
+    private var cancelling = false
+
+    def checkStillNeeded(): Boolean = !checkCancelled() && !checkDeadlineOver()
 
     def perform(): Unit
 
     def deadline: Deadline
 
-    def onDeadlineOver(): Unit
+    def cancel(): Unit ={
+        cancelling = true
+    }
 
     def checkDeadlineOver(): Boolean = {
         if (deadline.isOver) {
@@ -15,4 +20,15 @@ trait AsyncTask{
             true
         } else false
     }
+
+    def onDeadlineOver(): Unit
+
+    def checkCancelled(): Boolean = {
+        if (cancelling) {
+            onCancelled()
+            true
+        } else false
+    }
+
+    def onCancelled(): Unit
 }
