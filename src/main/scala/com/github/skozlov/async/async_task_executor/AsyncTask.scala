@@ -3,9 +3,7 @@ package com.github.skozlov.async.async_task_executor
 import com.github.skozlov.async.cancel.Cancellable
 import com.github.skozlov.async.deadline.Deadline
 
-trait AsyncTask {
-    this: AsyncTask with Cancellable.Mutable =>
-
+trait AsyncTask extends Cancellable {
     def checkStillNeeded(): Boolean = !checkCancelled() && !checkDeadlineOver()
 
     def perform(): Unit
