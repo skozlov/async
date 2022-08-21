@@ -1,4 +1,4 @@
-package com.github.skozlov.async.future
+package com.github.skozlov.async.future.executor
 
 sealed trait FutureResult[+A]
 
