@@ -1,7 +1,7 @@
-package com.github.skozlov.async
+package com.github.skozlov.async.deadline
 
-import java.time.{Clock, Instant}
 import java.time.temporal.ChronoUnit.NANOS
+import java.time.{Clock, Instant}
 import scala.concurrent.duration.Duration
 
 sealed trait Deadline extends Ordered[Deadline] {

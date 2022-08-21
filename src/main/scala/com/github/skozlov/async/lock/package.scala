@@ -1,5 +1,7 @@
 package com.github.skozlov.async
 
+import com.github.skozlov.async.deadline.Deadline
+
 import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration

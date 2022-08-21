@@ -1,6 +1,6 @@
 package com.github.skozlov.async.async_task_executor.thread_pool
 
-import com.github.skozlov.async.Deadline
+import com.github.skozlov.async.deadline.Deadline
 import com.github.skozlov.async.lock.{RichCondition, RichLock}
 
 import java.util.concurrent.locks.ReentrantLock
