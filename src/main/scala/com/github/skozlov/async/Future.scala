@@ -34,4 +34,8 @@ object Future {
     case class MultiStep[+A, F](start: ForkJoin[F, A]) extends Future[A]
 
     def apply[A](a: => A): Future[A] = SingleStep(() => a)
+
+    def joinWith[F, J](futures: Seq[Future[F]])(f: Seq[F] => Future[J]): Future[J] = MultiStep(ForkJoin(futures, f))
+
+    def join[A](futures: Seq[Future[A]]): Future[Seq[A]] = joinWith(futures){Future(_)}
 }
