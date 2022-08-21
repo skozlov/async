@@ -1,4 +1,6 @@
-package com.github.skozlov.async
+package com.github.skozlov.async.async_task_executor
+
+import com.github.skozlov.async.{Deadline, RichCondition, RichLock}
 
 import java.util.concurrent.locks.ReentrantLock
 import scala.collection.mutable.ArrayBuffer

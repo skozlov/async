@@ -1,4 +1,4 @@
-package com.github.skozlov.async
+package com.github.skozlov.async.async_task_executor
 
 import java.lang.Thread.currentThread
 

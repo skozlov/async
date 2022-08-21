@@ -1,6 +1,8 @@
-package com.github.skozlov.async
+package com.github.skozlov.async.async_task_executor
 
-trait AsyncTask{
+import com.github.skozlov.async.Deadline
+
+trait AsyncTask {
     @volatile
     private var _cancelled = false
 
