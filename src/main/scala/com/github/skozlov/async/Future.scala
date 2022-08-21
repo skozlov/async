@@ -24,6 +24,8 @@ sealed trait Future[+A]{
     def flatten[B](implicit ev: A <:< Future[B]): Future[B] = flatMap(ev)
 
     def zipWith[B, C](that: Future[B])(f: (A, B) => Future[C]): Future[C] = MultiStep(ForkJoin(this, that)(f))
+
+    def zip[B](that: Future[B]): Future[(A, B)] = zipWith(that){(a, b) => Future{(a, b)}}
 }
 
 object Future {
