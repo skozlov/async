@@ -19,7 +19,7 @@ trait ThreadPool extends AsyncTaskExecutor {
             try {
                 tasks.enqueue(task)(task.deadline)
             } catch {
-                case _: TimeoutException => task.onDeadlineOver()
+                case e: TimeoutException => task.onDeadlineOver(e)
             }
         }
     }

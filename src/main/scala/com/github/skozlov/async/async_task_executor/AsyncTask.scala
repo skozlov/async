@@ -3,12 +3,16 @@ package com.github.skozlov.async.async_task_executor
 import com.github.skozlov.async.cancel.Cancellable
 import com.github.skozlov.async.deadline.Deadline
 
-trait AsyncTask extends Cancellable {
+import scala.concurrent.TimeoutException
+
+trait AsyncTask {
     def checkStillNeeded(): Boolean = !checkCancelled() && !checkDeadlineOver()
 
     def perform(): Unit
 
     def deadline: Deadline
+
+    def cancel: Cancellable
 
     def checkDeadlineOver(): Boolean = {
         if (deadline.isOver) {
@@ -19,8 +23,10 @@ trait AsyncTask extends Cancellable {
 
     def onDeadlineOver(): Unit
 
+    def onDeadlineOver(e: TimeoutException): Unit
+
     def checkCancelled(): Boolean = {
-        if (cancelled) {
+        if (cancel.cancelled) {
             onCancelConfirmation()
             true
         } else false
