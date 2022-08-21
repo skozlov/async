@@ -1,6 +1,7 @@
-package com.github.skozlov.async.async_task_executor
+package com.github.skozlov.async.async_task_executor.thread_pool
 
 import com.github.skozlov.async.Deadline
+import com.github.skozlov.async.async_task_executor.{AsyncTask, AsyncTaskExecutor}
 
 import java.time.Clock
 import scala.concurrent.TimeoutException
