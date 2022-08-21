@@ -1,6 +1,6 @@
 package com.github.skozlov.async
 
-import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.{Condition, Lock}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
 
@@ -29,6 +29,26 @@ package object lock {
             } finally {
                 lock.unlock()
             }
+        }
+    }
+
+    implicit class RichCondition(condition: Condition) {
+        @throws[TimeoutException]
+        def await(timeout: Duration): Unit = {
+            if (timeout <= Duration.Zero) {
+                throw new TimeoutException(s"Will not await with non-positive timeout $timeout")
+            } else if (timeout == Duration.Inf) {
+                condition.await()
+            } else {
+                if (!condition.await(timeout.length, timeout.unit)) {
+                    throw new TimeoutException(s"Waited on condition for $timeout")
+                }
+            }
+        }
+
+        @throws[TimeoutException]
+        def awaitWithDeadline()(implicit deadline: Deadline): Unit = {
+            await(deadline.toTimeout)
         }
     }
 }
