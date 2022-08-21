@@ -1,4 +1,4 @@
-package com.github.skozlov.async
+package com.github.skozlov.async.future
 
 case class ForkJoin[F, +J](fork: Seq[Future[F]], join: Seq[F] => Future[J])
 

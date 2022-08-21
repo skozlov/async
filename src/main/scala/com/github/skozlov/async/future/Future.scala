@@ -1,7 +1,6 @@
-package com.github.skozlov.async
+package com.github.skozlov.async.future
 
-import com.github.skozlov.async.Future.MultiStep
-import Future._
+import com.github.skozlov.async.future.Future._
 
 sealed trait Future[+A]{
     def flatMap[B](f: A => Future[B]): Future[B] = {
