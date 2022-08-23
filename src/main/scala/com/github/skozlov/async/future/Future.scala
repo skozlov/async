@@ -6,10 +6,9 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 sealed trait Future[+A] {
-    def flatMapTry[B](f: Try[A] => Future[B]): Future[B] = ForkJoin[A, B, Unit](
+    def flatMapTry[B](f: Try[A] => Future[B]): Future[B] = ForkJoin(
         fork = Seq(this),
-        createJoinBuffer = () => (),
-        join = (_, _, result) => Right(f(result))
+        join = (_, result: Try[A]) => Some(f(result))
     )
 
     def flatMap[B](f: A => Future[B]): Future[B] = flatMapTry {
@@ -41,6 +40,17 @@ object Future {
         createJoinBuffer: () => Buf,
         join: (Buf, FutureIndex, Try[F]) => Either[Buf, Future[J]]
     ) extends Future[J]
+
+    object ForkJoin {
+        def apply[F, J](
+            fork: Seq[Future[F]],
+            join: (FutureIndex, Try[F]) => Option[Future[J]]
+        ): ForkJoin[F, J, Unit] = ForkJoin(
+            fork,
+            createJoinBuffer = () => (),
+            (_, futureIndex, result) => join(futureIndex, result).toRight(())
+        )
+    }
 
     def success[A](result: A): Future[A] = Completed(Success(result))
 
