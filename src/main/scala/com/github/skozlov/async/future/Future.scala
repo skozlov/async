@@ -47,5 +47,5 @@ object Future {
 
     def apply[A](result: => A): Future[A] = SingleStep{() => result}
 
-    def first[A](futures: Seq[Future[A]])(p: A => Boolean): Future[Option[A]] = ???
+    def first[A](futures: Seq[Future[A]], failFast: Boolean)(p: A => Boolean): Future[Option[A]] = ???
 }
