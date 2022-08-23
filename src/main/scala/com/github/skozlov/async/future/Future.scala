@@ -41,11 +41,28 @@ object Future {
         getResult: Buf => Future[J]
     ) extends Future[J]
 
-    def success[A](result: A): Future[A] = Completed(Success(result))
+    def completed[A](result: Try[A]): Future[A] = Completed(result)
 
-    def failure(e: Throwable): Future[Nothing] = Completed(Failure(e))
+    def success[A](result: A): Future[A] = completed(Success(result))
+
+    def failure(e: Throwable): Future[Nothing] = completed(Failure(e))
 
     def apply[A](result: => A): Future[A] = SingleStep{() => result}
 
-    def first[A](futures: Seq[Future[A]], failFast: Boolean)(p: A => Boolean): Future[Option[A]] = ???
+    def first[A](futures: Seq[Future[A]], failOnError: Boolean = false)(p: A => Boolean): Future[Option[A]] = {
+        ForkJoin[A, Option[A], Try[Option[A]]](
+            fork = futures,
+            createJoinBuffer = () => Success(None),
+            joinNext = (buf, _, result: Try[A]) => result match {
+                case Success(a) if p(a) => (Success(Some(a)), true)
+                case Failure(e) if failOnError => (Failure[Option[A]](e), true)
+                case _ => (buf, false)
+            },
+            getResult = Future.completed
+        )
+    }
+
+    def seq[A](futures: Seq[Future[A]]): Future[Seq[A]] = ???
+
+    def seqCollectingAllFailures[A](futures: Seq[Future[A]]): Future[Seq[Try[A]]] = ???
 }
