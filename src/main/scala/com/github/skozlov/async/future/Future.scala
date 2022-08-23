@@ -2,6 +2,7 @@ package com.github.skozlov.async.future
 
 import com.github.skozlov.async.future.Future._
 
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 sealed trait Future[+A] {
@@ -62,7 +63,17 @@ object Future {
         )
     }
 
-    def seq[A](futures: Seq[Future[A]]): Future[Seq[A]] = ???
+    def seq[A: ClassTag](futures: Seq[Future[A]]): Future[Seq[A]] = ForkJoin[A, Seq[A], Try[Array[A]]](
+        fork = futures,
+        createJoinBuffer = () => Success(Array.ofDim[A](futures.size)),
+        joinNext = {
+            case (_, _, Failure(e)) => (Failure(e), true)
+            case (array, i, Success(a)) =>
+                array.get(i) = a
+                (array, false)
+        },
+        getResult = buffer => Future.completed(buffer map {_.toSeq})
+    )
 
     def seqCollectingAllFailures[A](futures: Seq[Future[A]]): Future[Seq[Try[A]]] = ???
 }
