@@ -1,16 +1,15 @@
 package com.github.skozlov.async.future
 
-import com.github.skozlov.async.future.Future.{ForkJoin, join}
+import com.github.skozlov.async.future.Future._
 
-import scala.Function.unlift
-import scala.annotation.tailrec
-import scala.collection.mutable.ListBuffer
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 sealed trait Future[+A] {
-    def flatMapTry[B](f: Try[A] => Future[B]): Future[B] = ForkJoin[A, B](
-        Seq(this),
-        {case Seq(Some(result)) => f(result)}
+    def flatMapTry[B](f: Try[A] => Future[B]): Future[B] = ForkJoin[A, B, Unit](
+        fork = Seq(this),
+        createJoinBuffer = () => (),
+        join = (_, _, result) => Right(f(result))
     )
 
     def flatMap[B](f: A => Future[B]): Future[B] = flatMapTry {
@@ -35,9 +34,12 @@ object Future {
 
     case class SingleStep[+A](f: () => A) extends Future[A]
 
-    case class ForkJoin[F, +J](
+    type FutureIndex = Int
+
+    case class ForkJoin[F, +J, Buf](
         fork: Seq[Future[F]],
-        join: PartialFunction[Seq[Option[Try[F]]], Future[J]]
+        createJoinBuffer: () => Buf,
+        join: (Buf, FutureIndex, Try[F]) => Either[Buf, Future[J]]
     ) extends Future[J]
 
     def success[A](result: A): Future[A] = Completed(Success(result))
@@ -46,30 +48,23 @@ object Future {
 
     def apply[A](result: => A): Future[A] = SingleStep{() => result}
 
-    def join[A](futures: Seq[Future[A]]): Future[Seq[A]] = ForkJoin[A, Seq[A]](
-        futures,
-        unlift {results: Seq[Option[Try[A]]] =>
-            val joined = new ListBuffer[A]
-            val iterator = results.iterator
-
-            @tailrec
-            def loop(): Option[Future[Seq[A]]] = {
-                if (iterator.hasNext) {
-                    iterator.next() match {
-                        case None => None
-                        case Some(Failure(e)) => Some(Future.failure(e))
-                        case Some(Success(a)) =>
-                            joined append a
-                            loop()
+    def join[A: ClassTag](futures: Seq[Future[A]]): Future[Seq[A]] = {
+        val finalFuturesCompletedBefore = futures.size - 1
+        ForkJoin[A, Seq[A], (Array[A], Int)](
+            fork = futures,
+            createJoinBuffer = () => (Array.ofDim[A](futures.size), 0),
+            join = {
+                case ((results, futuresCompletedBefore), i, Success(a)) =>
+                    results(i) = a
+                    if (futuresCompletedBefore == finalFuturesCompletedBefore) {
+                        Right(Future.success(results.toSeq))
+                    } else {
+                        Left((results, futuresCompletedBefore + 1))
                     }
-                } else {
-                    Some(Future.success(joined.toSeq))
-                }
+                case (_, _, Failure(e)) => Right(Future.failure(e))
             }
-
-            loop()
-        }
-    )
+        )
+    }
 
     def first[A](futures: Seq[Future[A]])(p: A => Boolean): Future[Option[A]] = ???
 }
