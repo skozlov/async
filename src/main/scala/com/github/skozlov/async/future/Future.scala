@@ -75,5 +75,15 @@ object Future {
         getResult = buffer => Future.completed(buffer map {_.toSeq})
     )
 
-    def seqCollectingAllFailures[A](futures: Seq[Future[A]]): Future[Seq[Try[A]]] = ???
+    def seqCollectingAllFailures[A](futures: Seq[Future[A]]): Future[Seq[Try[A]]] = {
+        ForkJoin[A, Seq[Try[A]], Array[Try[A]]](
+            fork = futures,
+            createJoinBuffer = () => Array.ofDim[Try[A]](futures.size),
+            joinNext = (array, i, result) => {
+                array(i) = result
+                (array, false)
+            },
+            getResult = array => Future.success(array.toSeq)
+        )
+    }
 }
