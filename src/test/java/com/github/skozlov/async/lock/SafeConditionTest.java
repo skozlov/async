@@ -1,6 +1,7 @@
 package com.github.skozlov.async.lock;
 
 import com.github.skozlov.async.deadline.Deadline;
+import com.github.skozlov.async.deadline.DeadlinePassedException;
 import com.github.skozlov.async.function.InterruptibleSupplier;
 import com.github.skozlov.commons.test.TestingConcurrentEnv;
 import com.github.skozlov.commons.test.TestingConcurrentEnv.Await;
@@ -17,10 +18,10 @@ import java.util.concurrent.locks.Condition;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 class SafeConditionTest {
   private TestingConcurrentEnv env;
@@ -55,7 +56,7 @@ class SafeConditionTest {
                 new Await(Duration.ofNanos(awaitNanos), AwaitResult.SIGNAL)
             ));
             SafeCondition TOT = SafeCondition.from(unsafeMock);
-            assertThat(TOT.await(deadline, newUntilSupplier(1))).isTrue();
+            TOT.await(deadline, newUntilSupplier(1));
             verify(unsafeMock, times(1)).await(eq(timeoutNanos), eq(NANOSECONDS));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -90,7 +91,7 @@ class SafeConditionTest {
                 new Await(Duration.ofNanos(secondAwaitNanos), AwaitResult.SIGNAL)
             ));
             SafeCondition TOT = SafeCondition.from(unsafeMock);
-            assertThat(TOT.await(deadline, newUntilSupplier(2))).isTrue();
+            TOT.await(deadline, newUntilSupplier(2));
             verify(unsafeMock, times(1)).await(eq(firstAwaitNanos), eq(NANOSECONDS));
             verify(unsafeMock, times(1)).await(eq(timeoutNanos - firstAwaitNanos), eq(NANOSECONDS));
           } catch (InterruptedException e) {
@@ -116,7 +117,7 @@ class SafeConditionTest {
       }
 
       @Nested
-      class TimedOut {
+      class TimedOutButUntilIsSatisfied {
         @Test
         void beforeDeadline() {
           try {
@@ -124,7 +125,7 @@ class SafeConditionTest {
                 new Await(Duration.ofNanos(timeoutNanos - 1), AwaitResult.TIMEOUT)
             ));
             SafeCondition TOT = SafeCondition.from(unsafeMock);
-            assertThat(TOT.await(deadline, newUntilSupplier(1))).isTrue();
+            TOT.await(deadline, newUntilSupplier(1));
             verify(unsafeMock, times(1)).await(eq(timeoutNanos), eq(NANOSECONDS));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -139,7 +140,7 @@ class SafeConditionTest {
                 new Await(Duration.ofNanos(timeoutNanos), AwaitResult.TIMEOUT)
             ));
             SafeCondition TOT = SafeCondition.from(unsafeMock);
-            assertThat(TOT.await(deadline, newUntilSupplier(1))).isTrue();
+            TOT.await(deadline, newUntilSupplier(1));
             verify(unsafeMock, times(1)).await(eq(timeoutNanos), eq(NANOSECONDS));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -154,7 +155,7 @@ class SafeConditionTest {
                 new Await(Duration.ofNanos(timeoutNanos + 1), AwaitResult.TIMEOUT)
             ));
             SafeCondition TOT = SafeCondition.from(unsafeMock);
-            assertThat(TOT.await(deadline, newUntilSupplier(1))).isTrue();
+            TOT.await(deadline, newUntilSupplier(1));
             verify(unsafeMock, times(1)).await(eq(timeoutNanos), eq(NANOSECONDS));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -171,7 +172,7 @@ class SafeConditionTest {
                 new Await(Duration.ofNanos(awaitNanos), AwaitResult.TIMEOUT)
             ));
             SafeCondition TOT = SafeCondition.from(unsafeMock);
-            assertThat(TOT.await(deadline, newUntilSupplier(2))).isTrue();
+            TOT.await(deadline, newUntilSupplier(2));
             verify(unsafeMock, times(1)).await(eq(timeoutNanos), eq(NANOSECONDS));
             verify(unsafeMock, times(1)).await(eq(timeoutNanos - awaitNanos), eq(NANOSECONDS));
           } catch (InterruptedException e) {
@@ -190,7 +191,9 @@ class SafeConditionTest {
               new Await(Duration.ofNanos(awaitNanos), AwaitResult.TIMEOUT)
           ));
           SafeCondition TOT = SafeCondition.from(unsafeMock);
-          assertThat(TOT.await(deadline, newUntilSupplier(2))).isFalse();
+          assertThatThrownBy(() -> TOT.await(deadline, newUntilSupplier(2)))
+              .isInstanceOf(DeadlinePassedException.class)
+              .hasMessage("Deadline(1970-01-01T00:00:00.000001234Z) passed");
           verify(unsafeMock, times(1)).await(eq(timeoutNanos), eq(NANOSECONDS));
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();

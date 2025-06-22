@@ -1,6 +1,7 @@
 package com.github.skozlov.async.lock;
 
 import com.github.skozlov.async.deadline.Deadline;
+import com.github.skozlov.async.deadline.DeadlinePassedException;
 import com.github.skozlov.async.function.InterruptibleSupplier;
 import lombok.NonNull;
 
@@ -12,18 +13,18 @@ public interface SafeCondition {
   @NonNull
   Condition toUnsafe();
 
-  default boolean await(@NonNull Deadline deadline, @NonNull InterruptibleSupplier<Boolean> until) throws InterruptedException {
+  default void await(@NonNull Deadline deadline, @NonNull InterruptibleSupplier<Boolean> until) throws InterruptedException, DeadlinePassedException {
     var unsafe = toUnsafe();
     for (;;) {
       if (until.get()) {
-        return true;
+        return;
       }
       var timeout = deadline.getTimeLeft();
       if (timeout.isPositive()) {
         //noinspection ResultOfMethodCallIgnored
         unsafe.await(timeout.toNanos(), NANOSECONDS);
       } else {
-        return false;
+        throw new DeadlinePassedException(deadline);
       }
     }
   }
