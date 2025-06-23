@@ -17,7 +17,7 @@ public interface SafeLock {
     Lock unsafe = toUnsafe();
     for (;;) {
       Duration timeout = deadline.getTimeLeft();
-      boolean acquired = unsafe.tryLock(deadline.getTimeLeft().toNanos(), NANOSECONDS);
+      boolean acquired = unsafe.tryLock(timeout.toNanos(), NANOSECONDS);
       if (acquired) {
         return new LockAutoClose(unsafe);
       } else if (!timeout.isPositive()) {
