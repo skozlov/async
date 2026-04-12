@@ -16,9 +16,9 @@ public interface QueueWithDeadline<E> {
   }
 
   @NonNull
-  List<E> dequeue(int numElements, @NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException;
+  List<E> dequeue(int minElements, int maxElements, @NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException;
 
-  default @NonNull E dequeue(@NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException {
-    return dequeue(1, deadline).getFirst();
+  default @NonNull E dequeueOne(@NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException {
+    return dequeue(1, 1, deadline).getFirst();
   }
 }

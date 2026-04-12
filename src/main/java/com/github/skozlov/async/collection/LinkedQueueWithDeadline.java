@@ -12,7 +12,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static java.lang.Math.min;
+import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 
 public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
   private final int capacity;
@@ -47,52 +48,66 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
       return;
     }
     try (var ignored = enqueueLock.lock(deadline)) {
-      try (var ignored1 = commonLock.lock(deadline)) {
-        do {
+      do {
+        int canAdd;
+        try (var ignored1 = commonLock.lock(deadline)) {
           nonFullCondition.await(deadline, () -> size < capacity);
-          int numCanAdd = capacity - size;
-          Node<E> newElementsHead = new Node<>(it.next());
-          Node<E> newElementsTail = newElementsHead;
-          int numAdded = 1;
-          for (; numAdded < numCanAdd && it.hasNext(); numAdded++) {
-            newElementsTail.next = new Node<>(it.next());
-            newElementsTail = newElementsTail.next;
-          }
-          if (tail == null) {
-            head = newElementsHead;
+          canAdd = capacity - size;
+        }
+        Node<E> newPartHead = new Node<>(it.next());
+        Node<E> newPartTail = newPartHead;
+        int collected = 1;
+        canAdd--;
+        for (; canAdd > 0 && it.hasNext(); collected++, canAdd--) {
+          newPartTail.next = new Node<>(it.next());
+          newPartTail = newPartTail.next;
+        }
+        try (var ignored1 = commonLock.lock(deadline)) {
+          if (head == null) {
+            head = newPartHead;
           } else {
-            tail.next = newElementsHead;
+            tail.next = newPartHead;
           }
-          tail = newElementsTail;
-          size += numAdded;
+          tail = newPartTail;
+          size += collected;
           nonEmptyCondition.signalAll();
-        } while (it.hasNext());
-      }
+        }
+      } while (it.hasNext());
     }
   }
 
   @Override
-  public @NonNull List<E> dequeue(int numElements, @NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException {
-    if (numElements <= 0) {
-      throw new IllegalArgumentException("Non-positive numElements: " + numElements);
+  public @NonNull List<E> dequeue(int minElements, int maxElements, @NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException {
+    if (minElements < 0) {
+      throw new IllegalArgumentException("Negative minElements: " + minElements);
     }
-    List<E> results = new ArrayList<>(numElements);
+    if (maxElements < minElements) {
+      throw new IllegalArgumentException(format("maxElements (%d) < minElements (%d)", maxElements, minElements));
+    }
+    if (maxElements == 0) {
+      return emptyList();
+    }
+    List<E> results = new ArrayList<>(minElements);
     try (var ignored = dequeueLock.lock(deadline)) {
-      try (var ignored1 = commonLock.lock(deadline)) {
-        do {
-          nonEmptyCondition.await(deadline, () -> size > 0);
-          int numToRemove = min(size, numElements - results.size());
-          for (int i = 0; i < numToRemove; i++) {
+      do {
+        try (var ignored1 = commonLock.lock(deadline)) {
+          if (size == 0) {
+            if (results.size() >= minElements) {
+              return results;
+            } else {
+              nonEmptyCondition.await(deadline, () -> size > 0);
+            }
+          }
+          for (; head != null && results.size() < maxElements; size--) {
             results.add(head.value);
             head = head.next;
+            if (head == null) {
+              tail = null;
+            }
           }
-          if (head == null) {
-            tail = null;
-          }
-          size -= numToRemove;
           nonFullCondition.signalAll();
-        } while (results.size() < numElements);
-      }
+        }
+      } while (results.size() < maxElements);
     }
     return results;
   }
