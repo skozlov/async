@@ -2,8 +2,11 @@ package com.github.skozlov.async.collection;
 
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
+import com.github.skozlov.async.function.PartialResult;
+import com.github.skozlov.async.lock.LockAutoClose;
 import com.github.skozlov.async.lock.SafeCondition;
 import com.github.skozlov.async.lock.SafeLock;
+import com.github.skozlov.commons.Pair;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -17,9 +20,7 @@ import static java.util.Collections.emptyList;
 
 public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
   private final int capacity;
-  private final SafeLock enqueueLock;
-  private final SafeLock dequeueLock;
-  private final SafeLock commonLock;
+  private final SafeLock lock;
   private final SafeCondition nonEmptyCondition;
   private final SafeCondition nonFullCondition;
   private int size;
@@ -31,53 +32,51 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
       throw new IllegalArgumentException("Non-positive capacity: " + capacity);
     }
     this.capacity = capacity;
-    enqueueLock = SafeLock.from(new ReentrantLock());
-    dequeueLock = SafeLock.from(new ReentrantLock());
-    commonLock = SafeLock.from(new ReentrantLock());
-    nonEmptyCondition = commonLock.newCondition();
-    nonFullCondition = commonLock.newCondition();
+    lock = SafeLock.from(new ReentrantLock());
+    nonEmptyCondition = lock.newCondition();
+    nonFullCondition = lock.newCondition();
     size = 0;
     head = null;
     tail = null;
   }
 
   @Override
-  public void enqueue(@NonNull Iterable<? extends E> elements, @NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException {
+  public @NonNull PartialResult<Pair<Integer, Iterator<? extends E>>> enqueue(@NonNull Iterable<? extends E> elements, @NonNull Deadline deadline) {
+    int added = 0;
     Iterator<? extends E> it = elements.iterator();
     if (!it.hasNext()) {
-      return;
+      return new PartialResult.Success<>(new Pair<>(added, it));
     }
-    try (var ignored = enqueueLock.lock(deadline)) {
+    try (LockAutoClose ignored = lock.lock(deadline)) {
       do {
-        int canAdd;
-        try (var ignored1 = commonLock.lock(deadline)) {
-          nonFullCondition.await(deadline, () -> size < capacity);
-          canAdd = capacity - size;
-        }
+        nonFullCondition.await(deadline, () -> size < capacity);
         Node<E> newPartHead = new Node<>(it.next());
         Node<E> newPartTail = newPartHead;
-        int collected = 1;
-        canAdd--;
-        for (; canAdd > 0 && it.hasNext(); collected++, canAdd--) {
+        int newPartSize = 1;
+        for (int canAdd = capacity - size; canAdd > 0 && it.hasNext(); canAdd--, newPartSize++) {
           newPartTail.next = new Node<>(it.next());
           newPartTail = newPartTail.next;
         }
-        try (var ignored1 = commonLock.lock(deadline)) {
-          if (head == null) {
-            head = newPartHead;
-          } else {
-            tail.next = newPartHead;
-          }
-          tail = newPartTail;
-          size += collected;
-          nonEmptyCondition.signalAll();
+        if (head == null) {
+          head = newPartHead;
+        } else {
+          tail.next = newPartHead;
         }
+        tail = newPartTail;
+        size += newPartSize;
+        added += newPartSize;
       } while (it.hasNext());
+      return new PartialResult.Success<>(new Pair<>(added, it));
+    } catch (DeadlinePassedException e) {
+      return new PartialResult.DeadlinePassed<>(new Pair<>(added, it), e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return new PartialResult.Interrupted<>(new Pair<>(added, it), e);
     }
   }
 
   @Override
-  public @NonNull List<E> dequeue(int minElements, int maxElements, @NonNull Deadline deadline) throws DeadlinePassedException, InterruptedException {
+  public @NonNull PartialResult<List<E>> dequeue(int minElements, int maxElements, @NonNull Deadline deadline) {
     if (minElements < 0) {
       throw new IllegalArgumentException("Negative minElements: " + minElements);
     }
@@ -85,31 +84,33 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
       throw new IllegalArgumentException(format("maxElements (%d) < minElements (%d)", maxElements, minElements));
     }
     if (maxElements == 0) {
-      return emptyList();
+      return new PartialResult.Success<>(emptyList());
     }
-    List<E> results = new ArrayList<>(minElements);
-    try (var ignored = dequeueLock.lock(deadline)) {
+    List<E> result = new ArrayList<>(minElements);
+    try (LockAutoClose ignored = lock.lock(deadline)) {
       do {
-        try (var ignored1 = commonLock.lock(deadline)) {
-          if (size == 0) {
-            if (results.size() >= minElements) {
-              return results;
-            } else {
-              nonEmptyCondition.await(deadline, () -> size > 0);
-            }
+        if (size == 0) {
+          if (result.size() >= minElements) {
+            break;
+          } else {
+            nonEmptyCondition.await(deadline, () -> size > 0);
           }
-          for (; head != null && results.size() < maxElements; size--) {
-            results.add(head.value);
-            head = head.next;
-            if (head == null) {
-              tail = null;
-            }
-          }
-          nonFullCondition.signalAll();
         }
-      } while (results.size() < maxElements);
+        while (head != null && result.size() < maxElements) {
+          result.add(head.value);
+          head = head.next;
+          if (head == null) {
+            tail = null;
+          }
+          size--;
+        }
+      } while (result.size() < maxElements);
+      return new PartialResult.Success<>(result);
+    } catch (DeadlinePassedException e) {
+      return new PartialResult.DeadlinePassed<>(result, e);
+    } catch (InterruptedException e) {
+      return new PartialResult.Interrupted<>(result, e);
     }
-    return results;
   }
 
   @RequiredArgsConstructor
