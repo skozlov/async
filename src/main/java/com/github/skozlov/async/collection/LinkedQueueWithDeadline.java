@@ -53,7 +53,7 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
         Node<E> newPartHead = new Node<>(it.next());
         Node<E> newPartTail = newPartHead;
         int newPartSize = 1;
-        for (int canAdd = capacity - size; canAdd > 0 && it.hasNext(); canAdd--, newPartSize++) {
+        for (int canAdd = capacity - size - 1; canAdd > 0 && it.hasNext(); canAdd--, newPartSize++) {
           newPartTail.next = new Node<>(it.next());
           newPartTail = newPartTail.next;
         }
@@ -65,6 +65,7 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
         tail = newPartTail;
         size += newPartSize;
         added += newPartSize;
+        nonEmptyCondition.signalAll();
       } while (it.hasNext());
       return new PartialResult.Success<>(new Pair<>(added, it));
     } catch (DeadlinePassedException e) {
@@ -99,11 +100,12 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
         while (head != null && result.size() < maxElements) {
           result.add(head.value);
           head = head.next;
-          if (head == null) {
-            tail = null;
-          }
           size--;
         }
+        if (head == null) {
+          tail = null;
+        }
+        nonFullCondition.signalAll();
       } while (result.size() < maxElements);
       return new PartialResult.Success<>(result);
     } catch (DeadlinePassedException e) {
