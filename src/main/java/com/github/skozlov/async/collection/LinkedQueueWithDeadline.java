@@ -111,6 +111,7 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
     } catch (DeadlinePassedException e) {
       return new PartialResult.DeadlinePassed<>(result, e);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       return new PartialResult.Interrupted<>(result, e);
     }
   }
