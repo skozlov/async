@@ -18,8 +18,8 @@ import static com.github.skozlov.commons.test.ThreadTestUtils.withThread;
 import static java.lang.Thread.State.TIMED_WAITING;
 import static org.junit.jupiter.api.Assertions.*;
 
-class LinkedQueueWithDeadlineTest {
-  private final LinkedQueueWithDeadline<Integer> TOT = new LinkedQueueWithDeadline<>(3);
+class LinkedQueueTest {
+  private final LinkedQueue<Integer> TOT = new LinkedQueue<>(3);
 
   private void enqueueSuccessfully(Deadline deadline, Integer... elements) {
     switch (TOT.enqueue(Arrays.asList(elements), deadline)) {

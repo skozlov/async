@@ -8,7 +8,7 @@ import lombok.NonNull;
 import java.util.Iterator;
 import java.util.List;
 
-public interface QueueWithDeadline<E> {
+public interface Queue<E> {
   @NonNull
   PartialResult<Pair<Integer, Iterator<? extends E>>> enqueue(@NonNull Iterable<? extends E> elements, @NonNull Deadline deadline);
 

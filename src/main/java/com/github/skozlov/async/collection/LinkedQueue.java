@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
-public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
+public class LinkedQueue<E> implements Queue<E> {
   private final int capacity;
   private final SafeLock lock;
   private final SafeCondition nonEmptyCondition;
@@ -27,7 +27,7 @@ public class LinkedQueueWithDeadline<E> implements QueueWithDeadline<E> {
   private Node<E> head;
   private Node<E> tail;
 
-  public LinkedQueueWithDeadline(int capacity) {
+  public LinkedQueue(int capacity) {
     if (capacity <= 0) {
       throw new IllegalArgumentException("Non-positive capacity: " + capacity);
     }
