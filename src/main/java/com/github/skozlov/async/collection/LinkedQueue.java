@@ -69,7 +69,7 @@ public class LinkedQueue<E> implements Queue<E> {
       } while (it.hasNext());
       return new PartialResult.Success<>(new Pair<>(added, it));
     } catch (DeadlinePassedException e) {
-      return new PartialResult.DeadlinePassed<>(new Pair<>(added, it), e);
+      return new PartialResult.DeadlinePassed<>(deadline, new Pair<>(added, it), e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return new PartialResult.Interrupted<>(new Pair<>(added, it), e);
@@ -109,7 +109,7 @@ public class LinkedQueue<E> implements Queue<E> {
       } while (result.size() < maxElements);
       return new PartialResult.Success<>(result);
     } catch (DeadlinePassedException e) {
-      return new PartialResult.DeadlinePassed<>(result, e);
+      return new PartialResult.DeadlinePassed<>(deadline, result, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return new PartialResult.Interrupted<>(result, e);

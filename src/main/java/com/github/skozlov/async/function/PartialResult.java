@@ -1,6 +1,8 @@
 package com.github.skozlov.async.function;
 
+import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
+import lombok.NonNull;
 
 public sealed interface PartialResult<R> {
   R asSuccess() throws UnsupportedOperationException;
@@ -26,7 +28,7 @@ public sealed interface PartialResult<R> {
     }
   }
 
-  record DeadlinePassed<R>(R partialResult, DeadlinePassedException exception) implements PartialResult<R> {
+  record DeadlinePassed<R>(@NonNull Deadline deadline, R partialResult, DeadlinePassedException exception) implements PartialResult<R> {
     @Override
     public DeadlinePassed<R> asDeadlinePassed() throws UnsupportedOperationException {
       return this;
@@ -34,12 +36,12 @@ public sealed interface PartialResult<R> {
 
     @Override
     public R asSuccess() throws UnsupportedOperationException {
-      throw new UnsupportedOperationException("Deadline passed, partial result: " + partialResult, exception);
+      throw new UnsupportedOperationException(deadline + " passed, partial result: " + partialResult, exception);
     }
 
     @Override
     public Interrupted<R> asInterrupted() throws UnsupportedOperationException {
-      throw new UnsupportedOperationException("Deadline passed, partial result: " + partialResult, exception);
+      throw new UnsupportedOperationException(deadline + " passed, partial result: " + partialResult, exception);
     }
   }
 
