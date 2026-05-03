@@ -2,8 +2,6 @@ package com.github.skozlov.async.collection;
 
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
-import com.github.skozlov.async.function.PartialResult;
-import com.github.skozlov.commons.Pair;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -22,23 +20,13 @@ class LinkedQueueTest {
   private final LinkedQueue<Integer> TOT = new LinkedQueue<>(3);
 
   private void enqueueSuccessfully(Deadline deadline, Integer... elements) {
-    switch (TOT.enqueue(Arrays.asList(elements), deadline)) {
-      case PartialResult.Success<Pair<Integer, Iterator<? extends Integer>>> s -> {
-        var result = s.result();
-        assertEquals(elements.length, result._1());
-        assertFalse(result._2().hasNext());
-      }
-      case PartialResult.DeadlinePassed<?> p -> throw p.exception();
-      case PartialResult.Interrupted<?> i -> throw new RuntimeException(i.exception());
-    }
+    var result = TOT.enqueue(Arrays.asList(elements), deadline).asSuccess();
+    assertEquals(elements.length, result._1());
+    assertFalse(result._2().hasNext());
   }
 
   private List<Integer> dequeueSuccessfully(Deadline deadline, int minElements, int maxElements) {
-    return switch (TOT.dequeue(minElements, maxElements, deadline)) {
-      case PartialResult.Success<List<Integer>> s -> s.result();
-      case PartialResult.DeadlinePassed<?> p -> throw p.exception();
-      case PartialResult.Interrupted<?> i -> throw new RuntimeException(i.exception());
-    };
+    return TOT.dequeue(minElements, maxElements, deadline).asSuccess();
   }
 
   @Nested
@@ -120,35 +108,24 @@ class LinkedQueueTest {
 
     @Test
     void enqueue() {
-      switch (TOT.enqueue(List.of(10, 20, 30, 40), deadline)) {
-        case PartialResult.DeadlinePassed<Pair<Integer, Iterator<? extends Integer>>> p -> {
-          assertInstanceOf(DeadlinePassedException.class, p.exception());
-          assertEquals("Deadline(1970-01-01T00:00:00Z) passed", p.exception().getMessage());
+      var result = TOT.enqueue(List.of(10, 20, 30, 40), deadline).asDeadlinePassed();
+      assertInstanceOf(DeadlinePassedException.class, result.exception());
+      assertEquals("Deadline(1970-01-01T00:00:00Z) passed", result.exception().getMessage());
 
-          assertEquals(3, p.partialResult()._1());
+      assertEquals(3, result.partialResult()._1());
 
-          Iterator<? extends Integer> notInsertedElements = p.partialResult()._2();
-          assertEquals(40, notInsertedElements.next());
-          assertFalse(notInsertedElements.hasNext());
-        }
-        case PartialResult.Success<?> s -> fail("Unexpected successful result: " + s);
-        case PartialResult.Interrupted<?> i -> throw new RuntimeException(i.exception());
-      }
-      assertEquals(List.of(10, 20, 30), dequeueSuccessfully(deadline, 0, 3));
+      Iterator<? extends Integer> notInsertedElements = result.partialResult()._2();
+      assertEquals(40, notInsertedElements.next());
+      assertFalse(notInsertedElements.hasNext());
     }
 
     @Test
     void dequeue() {
       enqueueSuccessfully(deadline, 10, 20);
-      switch (TOT.dequeue(3, 3, deadline)) {
-        case PartialResult.DeadlinePassed<List<Integer>> p -> {
-          assertInstanceOf(DeadlinePassedException.class, p.exception());
-          assertEquals("Deadline(1970-01-01T00:00:00Z) passed", p.exception().getMessage());
-          assertEquals(List.of(10, 20), p.partialResult());
-        }
-        case PartialResult.Success<?> s -> fail("Unexpected successful result: " + s);
-        case PartialResult.Interrupted<?> i -> throw new RuntimeException(i.exception());
-      }
+      var result = TOT.dequeue(3, 3, deadline).asDeadlinePassed();
+      assertInstanceOf(DeadlinePassedException.class, result.exception());
+      assertEquals("Deadline(1970-01-01T00:00:00Z) passed", result.exception().getMessage());
+      assertEquals(List.of(10, 20), result.partialResult());
     }
   }
 
@@ -161,15 +138,10 @@ class LinkedQueueTest {
     void enqueue() {
       withThread(
           () -> {
-            switch (TOT.enqueue(List.of(10, 20, 30, 40), deadline)) {
-              case PartialResult.Interrupted<Pair<Integer, Iterator<? extends Integer>>> i -> {
-                assertNotNull(i.exception());
-                assertEquals(3, i.partialResult()._1());
-                assertEquals(40, i.partialResult()._2().next());
-              }
-              case PartialResult.Success<?> s -> fail("Unexpected successful result: " + s);
-              case PartialResult.DeadlinePassed<?> p -> throw p.exception();
-            }
+            var result = TOT.enqueue(List.of(10, 20, 30, 40), deadline).asInterrupted();
+            assertNotNull(result.exception());
+            assertEquals(3, result.partialResult()._1());
+            assertEquals(40, result.partialResult()._2().next());
           },
           enqueueThread -> {
             try {
@@ -193,14 +165,9 @@ class LinkedQueueTest {
       enqueueSuccessfully(deadline, 10, 20);
       withThread(
           () -> {
-            switch (TOT.dequeue(3, 3, deadline)) {
-              case PartialResult.Interrupted<List<Integer>> i -> {
-                assertNotNull(i.exception());
-                assertEquals(List.of(10, 20), i.partialResult());
-              }
-              case PartialResult.Success<?> s -> fail("Unexpected successful result: " + s);
-              case PartialResult.DeadlinePassed<?> p -> throw p.exception();
-            }
+            var i = TOT.dequeue(3, 3, deadline).asInterrupted();
+            assertNotNull(i.exception());
+            assertEquals(List.of(10, 20), i.partialResult());
           },
           dequeueThread -> {
             try {
