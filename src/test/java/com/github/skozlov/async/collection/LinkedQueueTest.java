@@ -20,13 +20,13 @@ class LinkedQueueTest {
   private final LinkedQueue<Integer> TOT = new LinkedQueue<>(3);
 
   private void enqueueSuccessfully(Deadline deadline, Integer... elements) {
-    var result = TOT.enqueue(Arrays.asList(elements), deadline).asSuccess();
+    var result = TOT.enqueue(Arrays.asList(elements), deadline).asSuccessOrThrow();
     assertEquals(elements.length, result._1());
     assertFalse(result._2().hasNext());
   }
 
   private List<Integer> dequeueSuccessfully(Deadline deadline, int minElements, int maxElements) {
-    return TOT.dequeue(minElements, maxElements, deadline).asSuccess();
+    return TOT.dequeue(minElements, maxElements, deadline).asSuccessOrThrow();
   }
 
   @Nested
@@ -108,7 +108,7 @@ class LinkedQueueTest {
 
     @Test
     void enqueue() {
-      var result = TOT.enqueue(List.of(10, 20, 30, 40), deadline).asDeadlinePassed();
+      var result = TOT.enqueue(List.of(10, 20, 30, 40), deadline).asFailureOrThrow();
       assertInstanceOf(DeadlinePassedException.class, result.exception());
       assertEquals("Deadline(1970-01-01T00:00:00Z) passed", result.exception().getMessage());
 
@@ -122,7 +122,7 @@ class LinkedQueueTest {
     @Test
     void dequeue() {
       enqueueSuccessfully(deadline, 10, 20);
-      var result = TOT.dequeue(3, 3, deadline).asDeadlinePassed();
+      var result = TOT.dequeue(3, 3, deadline).asFailureOrThrow();
       assertInstanceOf(DeadlinePassedException.class, result.exception());
       assertEquals("Deadline(1970-01-01T00:00:00Z) passed", result.exception().getMessage());
       assertEquals(List.of(10, 20), result.partialResult());
@@ -138,8 +138,8 @@ class LinkedQueueTest {
     void enqueue() {
       withThread(
           () -> {
-            var result = TOT.enqueue(List.of(10, 20, 30, 40), deadline).asInterrupted();
-            assertNotNull(result.exception());
+            var result = TOT.enqueue(List.of(10, 20, 30, 40), deadline).asFailureOrThrow();
+            assertInstanceOf(InterruptedException.class, result.exception());
             assertEquals(3, result.partialResult()._1());
             assertEquals(40, result.partialResult()._2().next());
           },
@@ -165,8 +165,8 @@ class LinkedQueueTest {
       enqueueSuccessfully(deadline, 10, 20);
       withThread(
           () -> {
-            var i = TOT.dequeue(3, 3, deadline).asInterrupted();
-            assertNotNull(i.exception());
+            var i = TOT.dequeue(3, 3, deadline).asFailureOrThrow();
+            assertInstanceOf(InterruptedException.class, i.exception());
             assertEquals(List.of(10, 20), i.partialResult());
           },
           dequeueThread -> {

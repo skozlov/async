@@ -1,8 +1,6 @@
 package com.github.skozlov.async.collection;
 
 import com.github.skozlov.async.deadline.Deadline;
-import com.github.skozlov.async.deadline.DeadlinePassedException;
-import com.github.skozlov.async.function.PartialResult;
 import com.github.skozlov.async.lock.LockAutoClose;
 import com.github.skozlov.async.lock.SafeCondition;
 import com.github.skozlov.async.lock.SafeLock;
@@ -41,43 +39,45 @@ public class LinkedQueue<E> implements Queue<E> {
   }
 
   @Override
-  public @NonNull PartialResult<Pair<Integer, Iterator<? extends E>>> enqueue(@NonNull Iterable<? extends E> elements, @NonNull Deadline deadline) {
+  public @NonNull Try<Pair<Integer, Iterator<? extends E>>> enqueue(@NonNull Iterable<? extends E> elements, @NonNull Deadline deadline) {
     int added = 0;
     Iterator<? extends E> it = elements.iterator();
-    if (!it.hasNext()) {
-      return new PartialResult.Success<>(new Pair<>(added, it));
-    }
-    try (LockAutoClose ignored = lock.lock(deadline)) {
-      do {
-        nonFullCondition.await(deadline, () -> size < capacity);
-        Node<E> newPartHead = new Node<>(it.next());
-        Node<E> newPartTail = newPartHead;
-        int newPartSize = 1;
-        for (int canAdd = capacity - size - 1; canAdd > 0 && it.hasNext(); canAdd--, newPartSize++) {
-          newPartTail.next = new Node<>(it.next());
-          newPartTail = newPartTail.next;
-        }
-        if (head == null) {
-          head = newPartHead;
-        } else {
-          tail.next = newPartHead;
-        }
-        tail = newPartTail;
-        size += newPartSize;
-        added += newPartSize;
-        nonEmptyCondition.signalAll();
-      } while (it.hasNext());
-      return new PartialResult.Success<>(new Pair<>(added, it));
-    } catch (DeadlinePassedException e) {
-      return new PartialResult.DeadlinePassed<>(deadline, new Pair<>(added, it), e);
+    try {
+      if (!it.hasNext()) {
+        return Try.success(new Pair<>(added, it));
+      }
+      try (LockAutoClose ignored = lock.lock(deadline)) {
+        do {
+          nonFullCondition.await(deadline, () -> size < capacity);
+          Node<E> newPartHead = new Node<>(it.next());
+          Node<E> newPartTail = newPartHead;
+          int newPartSize = 1;
+          for (int canAdd = capacity - size - 1; canAdd > 0 && it.hasNext(); canAdd--, newPartSize++) {
+            newPartTail.next = new Node<>(it.next());
+            newPartTail = newPartTail.next;
+          }
+          if (head == null) {
+            head = newPartHead;
+          } else {
+            tail.next = newPartHead;
+          }
+          tail = newPartTail;
+          size += newPartSize;
+          added += newPartSize;
+          nonEmptyCondition.signalAll();
+        } while (it.hasNext());
+      }
+      return Try.success(new Pair<>(added, it));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return new PartialResult.Interrupted<>(new Pair<>(added, it), e);
+      return Try.failure(e, new Pair<>(added, it));
+    } catch (RuntimeException e) {
+      return Try.failure(e, new Pair<>(added, it));
     }
   }
 
   @Override
-  public @NonNull PartialResult<List<E>> dequeue(int minElements, int maxElements, @NonNull Deadline deadline) {
+  public @NonNull Try<List<E>> dequeue(int minElements, int maxElements, @NonNull Deadline deadline) {
     if (minElements < 0) {
       throw new IllegalArgumentException("Negative minElements: " + minElements);
     }
@@ -85,7 +85,7 @@ public class LinkedQueue<E> implements Queue<E> {
       throw new IllegalArgumentException(format("maxElements (%d) < minElements (%d)", maxElements, minElements));
     }
     if (maxElements == 0) {
-      return new PartialResult.Success<>(emptyList());
+      return Try.success(emptyList());
     }
     List<E> result = new ArrayList<>(minElements);
     try (LockAutoClose ignored = lock.lock(deadline)) {
@@ -107,12 +107,12 @@ public class LinkedQueue<E> implements Queue<E> {
         }
         nonFullCondition.signalAll();
       } while (result.size() < maxElements);
-      return new PartialResult.Success<>(result);
-    } catch (DeadlinePassedException e) {
-      return new PartialResult.DeadlinePassed<>(deadline, result, e);
+      return Try.success(result);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return new PartialResult.Interrupted<>(result, e);
+      return Try.failure(e, result);
+    } catch (RuntimeException e) {
+      return Try.failure(e, result);
     }
   }
 
