@@ -68,10 +68,7 @@ public class LinkedQueue<E> implements Queue<E> {
         } while (it.hasNext());
       }
       return Try.success(new Pair<>(added, it));
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      return Try.failure(e, new Pair<>(added, it));
-    } catch (RuntimeException e) {
+    } catch (InterruptedException | RuntimeException e) {
       return Try.failure(e, new Pair<>(added, it));
     }
   }
@@ -108,10 +105,7 @@ public class LinkedQueue<E> implements Queue<E> {
         nonFullCondition.signalAll();
       } while (result.size() < maxElements);
       return Try.success(result);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      return Try.failure(e, result);
-    } catch (RuntimeException e) {
+    } catch (InterruptedException | RuntimeException e) {
       return Try.failure(e, result);
     }
   }

@@ -1,14 +1,18 @@
 package com.github.skozlov.commons.test;
 
+import com.github.skozlov.commons.CheckedConsumer;
+import com.github.skozlov.commons.CheckedRunnable;
 import lombok.NonNull;
 
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class ThreadTestUtils {
-  public static void withThread(@NonNull Runnable newThreadAction, @NonNull Consumer<Thread> actionWithNewThread) {
+  public static <E extends Exception> void withThread(
+      @NonNull CheckedRunnable<? extends Exception> newThreadAction,
+      @NonNull CheckedConsumer<Thread, ? extends E> actionWithNewThread
+  ) throws E {
     var threadError = new AtomicReference<Throwable>(null);
     var thread = new Thread(() -> {
       try {

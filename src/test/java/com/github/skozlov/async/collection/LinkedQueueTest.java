@@ -60,42 +60,34 @@ class LinkedQueueTest {
     }
 
     @Test
-    void enqueueWithBlocking() {
+    void enqueueWithBlocking() throws Exception {
       enqueue(1, 2);
       withThread(() -> enqueue(3, 4), enqueueThread -> {
-        try {
-          enqueueThread.start();
-          while (enqueueThread.getState() != TIMED_WAITING) {
-            Thread.yield();
-          }
-
-          assertEquals(List.of(1), dequeue(0, 1));
-          enqueueThread.join();
-
-          assertEquals(List.of(2, 3, 4), dequeue(0, 3));
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
+        enqueueThread.start();
+        while (enqueueThread.getState() != TIMED_WAITING) {
+          Thread.yield();
         }
+
+        assertEquals(List.of(1), dequeue(0, 1));
+        enqueueThread.join();
+
+        assertEquals(List.of(2, 3, 4), dequeue(0, 3));
       });
     }
 
     @Test
-    void dequeueWithBlocking() {
+    void dequeueWithBlocking() throws Exception {
       enqueue(1);
       withThread(
           () -> assertEquals(List.of(1, 2), dequeue(2, 3)),
           dequeueThread -> {
-            try {
-              dequeueThread.start();
-              while (dequeueThread.getState() != TIMED_WAITING) {
-                Thread.yield();
-              }
-
-              enqueue(2);
-              dequeueThread.join();
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
+            dequeueThread.start();
+            while (dequeueThread.getState() != TIMED_WAITING) {
+              Thread.yield();
             }
+
+            enqueue(2);
+            dequeueThread.join();
           }
       );
     }
@@ -135,7 +127,7 @@ class LinkedQueueTest {
     private final Deadline deadline = new Deadline(clock.instant().plus(1, ChronoUnit.HOURS), clock);
 
     @Test
-    void enqueue() {
+    void enqueue() throws Exception {
       withThread(
           () -> {
             var result = TOT.enqueue(List.of(10, 20, 30, 40), deadline).asFailureOrThrow();
@@ -144,24 +136,20 @@ class LinkedQueueTest {
             assertEquals(40, result.partialResult()._2().next());
           },
           enqueueThread -> {
-            try {
-              enqueueThread.start();
-              while (enqueueThread.getState() != TIMED_WAITING) {
-                Thread.yield();
-              }
-              enqueueThread.interrupt();
-              enqueueThread.join();
-              assertTrue(enqueueThread.isInterrupted());
-              assertEquals(List.of(10, 20, 30), dequeueSuccessfully(deadline, 0, 3));
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
+            enqueueThread.start();
+            while (enqueueThread.getState() != TIMED_WAITING) {
+              Thread.yield();
             }
+            enqueueThread.interrupt();
+            enqueueThread.join();
+            assertFalse(enqueueThread.isInterrupted());
+            assertEquals(List.of(10, 20, 30), dequeueSuccessfully(deadline, 0, 3));
           }
       );
     }
 
     @Test
-    void dequeue() {
+    void dequeue() throws Exception {
       enqueueSuccessfully(deadline, 10, 20);
       withThread(
           () -> {
@@ -170,17 +158,13 @@ class LinkedQueueTest {
             assertEquals(List.of(10, 20), i.partialResult());
           },
           dequeueThread -> {
-            try {
-              dequeueThread.start();
-              while (dequeueThread.getState() != TIMED_WAITING) {
-                Thread.yield();
-              }
-              dequeueThread.interrupt();
-              dequeueThread.join();
-              assertTrue(dequeueThread.isInterrupted());
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
+            dequeueThread.start();
+            while (dequeueThread.getState() != TIMED_WAITING) {
+              Thread.yield();
             }
+            dequeueThread.interrupt();
+            dequeueThread.join();
+            assertFalse(dequeueThread.isInterrupted());
           }
       );
     }

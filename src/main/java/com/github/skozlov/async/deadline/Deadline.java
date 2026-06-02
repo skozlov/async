@@ -23,6 +23,10 @@ public class Deadline implements Comparable<Deadline> {
     return instant;
   }
 
+  public boolean isPassed() {
+    return !clock.instant().isBefore(instant);
+  }
+
   public @NonNull Duration getTimeLeft() {
     return Duration.ofNanos(max(0L, clock.instant().until(instant, NANOS)));
   }
