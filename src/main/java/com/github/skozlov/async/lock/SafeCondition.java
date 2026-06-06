@@ -2,7 +2,7 @@ package com.github.skozlov.async.lock;
 
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
-import com.github.skozlov.async.function.InterruptibleSupplier;
+import com.github.skozlov.commons.CheckedSupplier;
 import lombok.NonNull;
 
 import java.util.concurrent.locks.Condition;
@@ -13,7 +13,7 @@ public interface SafeCondition {
   @NonNull
   Condition toUnsafe();
 
-  default void await(@NonNull Deadline deadline, @NonNull InterruptibleSupplier<Boolean> until) throws InterruptedException, DeadlinePassedException {
+  default void await(@NonNull Deadline deadline, @NonNull CheckedSupplier<Boolean, InterruptedException> until) throws InterruptedException, DeadlinePassedException {
     var unsafe = toUnsafe();
     for (;;) {
       if (until.get()) {

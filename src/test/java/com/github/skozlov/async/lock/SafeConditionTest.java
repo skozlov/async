@@ -2,7 +2,7 @@ package com.github.skozlov.async.lock;
 
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
-import com.github.skozlov.async.function.InterruptibleSupplier;
+import com.github.skozlov.commons.CheckedSupplier;
 import com.github.skozlov.commons.test.TestingConcurrentEnv;
 import com.github.skozlov.commons.test.TestingConcurrentEnv.Await;
 import com.github.skozlov.commons.test.TestingConcurrentEnv.AwaitResult;
@@ -41,7 +41,7 @@ class SafeConditionTest {
       deadline = new Deadline(env.getClock().instant().plusNanos(timeoutNanos), env.getClock());
     }
 
-    private static InterruptibleSupplier<Boolean> newUntilSupplier(int falseNumber) {
+    private static CheckedSupplier<Boolean, InterruptedException> newUntilSupplier(int falseNumber) {
       AtomicInteger falseNumberSoFar = new AtomicInteger(1);
       return () -> !(falseNumberSoFar.getAndIncrement() <= falseNumber);
     }
