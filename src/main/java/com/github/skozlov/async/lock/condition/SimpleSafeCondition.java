@@ -1,4 +1,4 @@
-package com.github.skozlov.async.lock;
+package com.github.skozlov.async.lock.condition;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;

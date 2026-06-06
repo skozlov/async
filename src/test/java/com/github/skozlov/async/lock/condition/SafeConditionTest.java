@@ -1,4 +1,4 @@
-package com.github.skozlov.async.lock;
+package com.github.skozlov.async.lock.condition;
 
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;

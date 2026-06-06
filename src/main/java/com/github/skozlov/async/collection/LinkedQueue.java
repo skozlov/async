@@ -2,7 +2,7 @@ package com.github.skozlov.async.collection;
 
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.lock.LockAutoClose;
-import com.github.skozlov.async.lock.SafeCondition;
+import com.github.skozlov.async.lock.condition.SafeCondition;
 import com.github.skozlov.async.lock.SafeLock;
 import com.github.skozlov.commons.Pair;
 import lombok.NonNull;

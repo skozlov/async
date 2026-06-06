@@ -2,6 +2,7 @@ package com.github.skozlov.async.lock;
 
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
+import com.github.skozlov.async.lock.condition.SafeCondition;
 import lombok.NonNull;
 
 import java.time.Duration;
