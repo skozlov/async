@@ -1,6 +1,8 @@
 package com.github.skozlov.async.task;
 
-import com.github.skozlov.async.collection.LinkedQueue;
+import com.github.skozlov.async.collection.queue.LinkedQueue;
+import com.github.skozlov.async.collection.queue.QueueListener;
+import com.github.skozlov.async.collection.queue.TestQueueListener;
 import com.github.skozlov.async.collection.Try;
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
@@ -24,10 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class WorkerTest {
   private final TestingConcurrentEnv env = new TestingConcurrentEnv();
   private final Clock clock = env.getClock();
+  private final QueueListener queueListener = new TestQueueListener();
 
   @Test
   void noTasks() throws Exception {
-    var worker = new TestWorker(new LinkedQueue<>(1));
+    var worker = new TestWorker(new LinkedQueue<>(1, queueListener));
     withThread(
         () -> worker.execute(new Deadline(clock.instant().plusSeconds(1), clock)),
         workerThread -> {
@@ -44,7 +47,7 @@ class WorkerTest {
   @Test
   void gracefulShutdown() throws Exception {
     var deadline = new Deadline(clock.instant().plusSeconds(1), clock);
-    var queue = new LinkedQueue<Task>(1);
+    var queue = new LinkedQueue<Task>(1, queueListener);
     var task = new TestTask(deadline);
     task.pause();
     queue.enqueue(List.of(task), deadline);
@@ -70,7 +73,7 @@ class WorkerTest {
   @Test
   void forceShutdown() throws Exception {
     var deadline = new Deadline(clock.instant().plusSeconds(1), clock);
-    var queue = new LinkedQueue<Task>(1);
+    var queue = new LinkedQueue<Task>(1, queueListener);
     var task = new TestTask(deadline);
     task.pause();
     queue.enqueue(List.of(task), deadline);
@@ -94,7 +97,7 @@ class WorkerTest {
 
   @Test
   void taskDequeueInterrupted() throws Exception {
-    var worker = new TestWorker(new LinkedQueue<>(1));
+    var worker = new TestWorker(new LinkedQueue<>(1, queueListener));
     withThread(
         () -> worker.execute(new Deadline(clock.instant().plusSeconds(1), clock)),
         workerThread -> {
@@ -120,7 +123,7 @@ class WorkerTest {
   @Test
   void taskExecutionInterrupted() throws Exception {
     var deadline = new Deadline(clock.instant().plusSeconds(1), clock);
-    var queue = new LinkedQueue<Task>(1);
+    var queue = new LinkedQueue<Task>(1, queueListener);
     var task = new TestTask(deadline);
     task.pause();
     queue.enqueue(List.of(task), deadline);
@@ -156,7 +159,7 @@ class WorkerTest {
   void workerExecutionDeadlinePassed() throws Exception {
     var workerDeadline = new Deadline(clock.instant().plusSeconds(1), clock);
     var taskDeadline = new Deadline(clock.instant().plusSeconds(2), clock);
-    var queue = new LinkedQueue<Task>(1);
+    var queue = new LinkedQueue<Task>(1, queueListener);
     var task = new TestTask(taskDeadline);
     task.pause();
     queue.enqueue(List.of(task), taskDeadline);
@@ -185,7 +188,7 @@ class WorkerTest {
 
   @Test
   void workerFatalException() throws Exception {
-    var queue = new LinkedQueue<Task>(1){
+    var queue = new LinkedQueue<Task>(1, queueListener){
       @Override
       public @NonNull Try<List<Task>> dequeue(int minElements, int maxElements, @NonNull Deadline deadline) {
         throw new UnsupportedOperationException("test");

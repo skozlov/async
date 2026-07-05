@@ -1,6 +1,6 @@
 package com.github.skozlov.async.task;
 
-import com.github.skozlov.async.collection.Queue;
+import com.github.skozlov.async.collection.queue.Queue;
 import lombok.NonNull;
 
 import java.util.ArrayList;

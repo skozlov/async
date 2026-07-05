@@ -1,9 +1,11 @@
-package com.github.skozlov.async.collection;
+package com.github.skozlov.async.collection.queue;
 
+import com.github.skozlov.async.collection.Try;
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.lock.LockAutoClose;
-import com.github.skozlov.async.lock.condition.SafeCondition;
 import com.github.skozlov.async.lock.SafeLock;
+import com.github.skozlov.async.lock.condition.SafeCondition;
+import com.github.skozlov.commons.CheckedSupplier;
 import com.github.skozlov.commons.Pair;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -21,15 +23,17 @@ public class LinkedQueue<E> implements Queue<E> {
   private final SafeLock lock;
   private final SafeCondition nonEmptyCondition;
   private final SafeCondition nonFullCondition;
+  private final QueueListener listener;
   private int size;
   private Node<E> head;
   private Node<E> tail;
 
-  public LinkedQueue(int capacity) {
+  public LinkedQueue(int capacity, @NonNull QueueListener listener) {
     if (capacity <= 0) {
       throw new IllegalArgumentException("Non-positive capacity: " + capacity);
     }
     this.capacity = capacity;
+    this.listener = NonThrowingQueueListener.from(listener);
     lock = SafeLock.from(new ReentrantLock());
     nonEmptyCondition = lock.newCondition();
     nonFullCondition = lock.newCondition();
@@ -48,7 +52,11 @@ public class LinkedQueue<E> implements Queue<E> {
       }
       try (LockAutoClose ignored = lock.lock(deadline)) {
         do {
-          nonFullCondition.await(deadline, () -> size < capacity);
+          CheckedSupplier<Boolean, InterruptedException> hasFreeSpace = () -> size < capacity;
+          if (!hasFreeSpace.get()) {
+            listener.onWaitingForFreeSpace(deadline);
+            nonFullCondition.await(deadline, hasFreeSpace);
+          }
           Node<E> newPartHead = new Node<>(it.next());
           Node<E> newPartTail = newPartHead;
           int newPartSize = 1;
@@ -64,6 +72,7 @@ public class LinkedQueue<E> implements Queue<E> {
           tail = newPartTail;
           size += newPartSize;
           added += newPartSize;
+          listener.onEnqueuedElements(newPartSize, size);
           nonEmptyCondition.signalAll();
         } while (it.hasNext());
       }
@@ -91,17 +100,24 @@ public class LinkedQueue<E> implements Queue<E> {
           if (result.size() >= minElements) {
             break;
           } else {
-            nonEmptyCondition.await(deadline, () -> size > 0);
+            CheckedSupplier<Boolean, InterruptedException> isNotEmpty = () -> size > 0;
+            if (!isNotEmpty.get()) {
+              listener.onWaitingForElements(deadline);
+              nonEmptyCondition.await(deadline, isNotEmpty);
+            }
           }
         }
+        int dequeued = 0;
         while (head != null && result.size() < maxElements) {
           result.add(head.value);
           head = head.next;
-          size--;
+          dequeued++;
         }
+        size -= dequeued;
         if (head == null) {
           tail = null;
         }
+        listener.onDequeuedElements(dequeued, size);
         nonFullCondition.signalAll();
       } while (result.size() < maxElements);
       return Try.success(result);

@@ -1,5 +1,6 @@
-package com.github.skozlov.async.collection;
+package com.github.skozlov.async.collection.queue;
 
+import com.github.skozlov.async.collection.Try;
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.commons.Pair;
 import lombok.NonNull;

@@ -1,6 +1,6 @@
 package com.github.skozlov.async.task;
 
-import com.github.skozlov.async.collection.Queue;
+import com.github.skozlov.async.collection.queue.Queue;
 import com.github.skozlov.async.collection.Try;
 import com.github.skozlov.async.deadline.Deadline;
 import com.github.skozlov.async.deadline.DeadlinePassedException;
